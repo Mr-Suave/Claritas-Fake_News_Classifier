@@ -1,7 +1,7 @@
 // src/pages/AnalyzerPage.jsx
-import React, { useState } from 'react';
-import { 
-  Upload, RefreshCw, BrainCircuit, UserCheck, Eye, EyeOff, 
+import React from 'react';
+import {
+  Upload, RefreshCw, BrainCircuit, UserCheck, Eye, EyeOff,
   Download, AlertTriangle, CheckCircle2, History, X, Layers,
   Link, ArrowRight
 } from 'lucide-react';
@@ -9,24 +9,25 @@ import { analyzeClaim, getOllamaExplanation } from '../services/api';
 import HumanReviewModal from '../components/HumanReviewModal';
 import { VerdictCard } from '../components/VerdictCard';
 import ReactMarkdown from 'react-markdown';
+import { useAnalysis } from '../context/AnalysisContext';
 
 export default function AnalyzerPage() {
-  const [inputText, setInputText] = useState('');
-  const [file, setFile] = useState(null);
-  const [status, setStatus] = useState('idle');
-  const [result, setResult] = useState(null);
-  const [toast, setToast] = useState(null);
-  const [showFullScrapedText, setShowFullScrapedText] = useState(false);
-  const [explainStatus, setExplainStatus] = useState('idle');
-  const [explanation, setExplanation] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Batch Processing State
-  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [batchInput, setBatchInput] = useState('');
-  const [batchResults, setBatchResults] = useState([]);
-  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
-  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const {
+    inputText, setInputText,
+    file, setFile,
+    status, setStatus,
+    result, setResult,
+    toast, setToast,
+    showFullScrapedText, setShowFullScrapedText,
+    explainStatus, setExplainStatus,
+    explanation, setExplanation,
+    isModalOpen, setIsModalOpen,
+    isBatchModalOpen, setIsBatchModalOpen,
+    batchInput, setBatchInput,
+    batchResults, setBatchResults,
+    isBatchProcessing, setIsBatchProcessing,
+    batchProgress, setBatchProgress,
+  } = useAnalysis();
 
   const sourceHistory = [
     { id: 1, date: '2026-09-20', score: 88, verdict: 'Likely Real' },
@@ -114,23 +115,23 @@ export default function AnalyzerPage() {
   // Inspect specific batch result in Analyzer View
   const handleSelectBatchResult = (batchItem) => {
     if (batchItem.status !== 'success') return;
-    
+
     setInputText(batchItem.input);
     setResult(batchItem.data);
     setStatus('analyzed');
     setExplainStatus('idle');
     setExplanation('');
     setIsBatchModalOpen(false);
-    
+
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
   const handleExportCSV = () => {
     if (!result) return;
-    const csvContent = "data:text/csv;charset=utf-8," + 
+    const csvContent = "data:text/csv;charset=utf-8," +
       "ID,Verdict,Confidence,MisinformationProb,Text\n" +
       `"${result.id}","${result.verdict}","${result.confidence_score}%","${result.misinformation_prob}","${result.cleaned_text.replace(/"/g, '""')}"`;
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -143,7 +144,7 @@ export default function AnalyzerPage() {
   const handleLearnMore = async () => {
     if (!result) return;
     setExplainStatus('explaining');
-    
+
     const xaiOutput = await getOllamaExplanation({
       text: result.cleaned_text,
       verdict: result.verdict,
@@ -223,7 +224,7 @@ export default function AnalyzerPage() {
         {/* Results Visualizer */}
         {status === 'analyzed' && result && (
           <div className="border-t border-slate-800 pt-6 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            
+
             {/* URL Extracted Text Preview Card */}
             {isInputUrl && (
               <div className="bg-slate-950 border border-indigo-900/60 rounded-2xl p-5 space-y-3">
@@ -274,13 +275,13 @@ export default function AnalyzerPage() {
                 <span className="bg-amber-900/80 px-2 py-0.5 rounded text-[10px] uppercase font-bold">Ensemble Active</span>
               </div>
             )}
-            
+
             <VerdictCard
-  confidence={result.confidence_score}
-  verdict={result.verdict}
-  text={result.cleaned_text}
-  misinformationProb={result.misinformation_prob}
-/>
+              confidence={result.confidence_score}
+              verdict={result.verdict}
+              text={result.cleaned_text}
+              misinformationProb={result.misinformation_prob}
+            />
 
             {/* Feature Contribution Bars */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3">
@@ -418,8 +419,8 @@ export default function AnalyzerPage() {
                       key={idx}
                       onClick={() => handleSelectBatchResult(res)}
                       className={`bg-slate-950 border rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs font-mono transition group ${
-                        res.status === 'success' 
-                          ? 'border-slate-800 hover:border-indigo-500 hover:bg-slate-900/90 cursor-pointer' 
+                        res.status === 'success'
+                          ? 'border-slate-800 hover:border-indigo-500 hover:bg-slate-900/90 cursor-pointer'
                           : 'border-rose-900/50 opacity-70 cursor-not-allowed'
                       }`}
                     >
