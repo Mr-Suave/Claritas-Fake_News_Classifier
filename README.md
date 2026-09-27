@@ -2,6 +2,29 @@
 
 Claritas is an end-to-end, privacy-focused Misinformation & Trust Detection Platform that combines layered ensemble classifiers, live web text extraction, batch analysis, and local explainable AI (XAI).
 
+## IMPORTANT: 
+
+Due to GitHub's 100MB file size limit, the pre-trained ensemble model weights are hosted externally and could not be committed to the repostitory.
+
+1. **Download**: Get the zipped model weights from [Google Drive](https://drive.google.com/file/d/1j0PQodhodaKshjPrsHAv2GMN_MSmBsOU/view?usp=sharing).
+2. **Extract**: Unzip the `models.zip` archive directly into the `claritas/src/backend/` directory so it replaces or populates the `models` folder.
+
+Your backend model directory should look like this after extraction:
+
+```text
+claritas/src/backend/models/
+└── claritas_kaggle_model/
+    └── saved_fake_news_pipeline/
+        ├── calibrated_lgbm_meta.joblib
+        ├── pipeline_metadata.joblib
+        ├── state.db
+        └── distilroberta_layer1/
+            ├── config.json
+            ├── model.safetensors
+            ├── tokenizer.json
+            └── tokenizer_config.json
+```
+
 ---
 
 ## Features
