@@ -1,12 +1,15 @@
 # backend/main.py
+import json
+from pathlib import Path
 from typing import Optional
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import traceback
 
-from scraper import extract_text_from_input, ScrapingError
+from scraper import extract_text_from_input, extract_domain, ScrapingError
 from metrics import compute_linguistic_metrics
 from classifier import ClaritasClassifier
 
@@ -21,7 +24,34 @@ app.add_middleware(
 )
 
 classifier_model = ClaritasClassifier()
+
+# --- PERSISTENT DATA STORAGE ---
+BASE_DIR = Path(__file__).resolve().parent
+HISTORY_FILE = BASE_DIR / "domain_history.json"
 review_database = []
+
+# Load existing domain history from JSON on startup
+def load_domain_history() -> dict:
+    if HISTORY_FILE.exists():
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[Warning] Failed to read {HISTORY_FILE}: {e}")
+            return {}
+    return {}
+
+# Save domain history to JSON file
+def save_domain_history(data: dict):
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"[Error] Failed to write to {HISTORY_FILE}: {e}")
+
+# Initialize in-memory cache from disk
+domain_history_db = load_domain_history()
+
 
 class AnalysisRequest(BaseModel):
     title: Optional[str] = "Direct Input"
@@ -57,7 +87,6 @@ def find_existing_review(raw_text: str, cleaned_text: str):
 
 @app.get("/api/health")
 async def health_check():
-    """Quick way to confirm the backend is up and whether explainability is available."""
     return {
         "status": "ok",
         "explainability_ready": classifier_model.explainability_ready,
@@ -67,15 +96,44 @@ async def health_check():
 async def analyze_claim(req: AnalysisRequest):
     try:
         cleaned_text = extract_text_from_input(req.text)
+        domain = extract_domain(req.text)
+        
         linguistic_data = compute_linguistic_metrics(cleaned_text)
-        prediction = classifier_model.predict(cleaned_text, linguistic_data)
+        
+        # Calculate domain historical score prior if domain scans exist
+        domain_prior = None
+        if domain != "Direct Input" and domain in domain_history_db and len(domain_history_db[domain]) > 0:
+            past_scores = [item["score"] / 100.0 for item in domain_history_db[domain]]
+            domain_prior = sum(past_scores) / len(past_scores)
+
+        prediction = classifier_model.predict(cleaned_text, linguistic_data, source_score=domain_prior)
         existing_review = find_existing_review(req.text, cleaned_text)
 
+        # Log to domain history for valid web URLs
+        if domain != "Direct Input":
+            if domain not in domain_history_db:
+                domain_history_db[domain] = []
+
+            new_history_entry = {
+                "id": len(domain_history_db[domain]) + 1,
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "score": prediction["confidence_score"],
+                "date": datetime.now().strftime("%b %d, %Y %I:%M %p"),
+                "verdict": prediction["verdict"]
+            }
+            domain_history_db[domain].append(new_history_entry)
+            
+            # Persist back to JSON file
+            save_domain_history(domain_history_db)
+
+        # Build dynamic response payload
         response_data = {
             "id": abs(hash(cleaned_text)) % 1000000,
             "title": req.title,
             "raw_text": req.text,
             "cleaned_text": cleaned_text,
+            "domain": domain,
+            "source_history": domain_history_db.get(domain, [])[-4:] if domain != "Direct Input" else [],
             "verdict": prediction["verdict"],
             "misinformation_prob": prediction["misinformation_prob"],
             "confidence_score": prediction["confidence_score"],
@@ -110,17 +168,10 @@ async def analyze_claim(req: AnalysisRequest):
 
 @app.post("/api/evidence")
 async def get_evidence(req: EvidenceRequest):
-    """
-    Runs SHAP (feature-level) + LIME (word-level) explanation on demand.
-    Kept separate from /api/analyze because LIME requires ~200 forward
-    passes through the transformer and would otherwise slow down the
-    primary analysis response.
-    """
     if not classifier_model.explainability_ready:
         raise HTTPException(
             status_code=503,
-            detail="Explainability engine is not available on this server. "
-                   "Check the uvicorn startup logs for a '[WARNING] Explainability engines failed to initialize' message."
+            detail="Explainability engine is not available on this server."
         )
     try:
         cleaned_text = extract_text_from_input(req.text)
@@ -173,49 +224,6 @@ async def record_human_review(review: ReviewFeedback):
 @app.get("/api/reviews")
 async def get_all_reviews():
     return {"reviews": review_database}
-
-@app.post("/api/explain")
-async def explain_with_ollama(payload: dict):
-    try:
-        import requests
-
-        text = payload.get("text", "")
-        verdict = payload.get("verdict", "")
-        confidence = payload.get("confidence", 0)
-        metrics = payload.get("metrics", {})
-
-        prompt = f"""Analyze this misinformation detection result and explain the key drivers:
-
-Text: {text[:500]}...
-
-Model Verdict: {verdict}
-Confidence: {confidence}%
-Subjectivity Score: {metrics.get('subjectivity', 0)}
-Readability (Flesch): {metrics.get('flesch_reading_ease', 0)}
-Word Count: {metrics.get('word_count', 0)}
-
-Provide a brief 3-point explanation of why the model reached this verdict. Focus on linguistic patterns and signals."""
-
-        response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "llama3",
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=120
-        )
-
-        if response.status_code == 200:
-            explanation = response.json().get("response", "")
-            return {"explanation": explanation}
-        else:
-            return {"explanation": "Ollama returned an error. Check your model is running."}
-
-    except requests.exceptions.ConnectionError:
-        return {"explanation": "Cannot connect to Ollama. Make sure it's running on http://localhost:11434"}
-    except Exception as e:
-        return {"explanation": f"Explanation generation failed: {str(e)}"}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -29,12 +29,7 @@ export default function AnalyzerPage() {
     batchProgress, setBatchProgress,
   } = useAnalysis();
 
-  const sourceHistory = [
-    { id: 1, date: '2026-09-20', score: 88, verdict: 'Likely Real' },
-    { id: 2, date: '2026-09-22', score: 92, verdict: 'Likely Real' },
-    { id: 3, date: '2026-09-25', score: 74, verdict: 'Uncertain' },
-    { id: 4, date: 'Current Scan', score: result?.confidence_score || 85, verdict: result?.verdict || 'Likely Real' }
-  ];
+  const sourceHistory = result?.source_history || [];
 
   const showToast = (message, type = 'error') => {
     setToast({ message, type });
@@ -302,20 +297,48 @@ export default function AnalyzerPage() {
             </div>
 
             {/* Source Credibility Timeline */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3">
-              <h4 className="text-xs font-bold font-mono uppercase text-indigo-400 flex items-center space-x-2">
-                <History className="w-4 h-4" />
-                <span>Source Credibility Trend</span>
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {sourceHistory.map((item) => (
-                  <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center space-y-1">
-                    <span className="text-[10px] font-mono text-slate-500 block">{item.date}</span>
-                    <span className="text-sm font-black text-indigo-300 block">{item.score}%</span>
-                    <span className="text-[9px] font-mono text-slate-400">{item.verdict}</span>
-                  </div>
-                ))}
+            {/* Source Credibility Trend Box */}
+            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/60 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                  Source Credibility Trend
+                </h3>
+                {result?.domain && (
+                  <span className="text-xs font-mono bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                    {result.domain}
+                  </span>
+                )}
               </div>
+
+              {!result?.source_history || result.source_history.length === 0 || result?.domain === "Direct Input" ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400 bg-slate-900/40 rounded-lg border border-dashed border-slate-700">
+                  <svg className="w-8 h-8 mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm font-medium text-slate-300">No source history available</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {result?.domain === "Direct Input" 
+                      ? "Historical tracking requires a web article URL." 
+                      : "This domain hasn't been scanned enough times yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {result.source_history.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-700/50">
+                      <div>
+                        <p className="text-sm font-medium text-slate-200">{item.date}</p>
+                        <p className="text-xs text-slate-400">{item.verdict}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-indigo-400">{item.score}%</span>
+                        <p className="text-[10px] text-slate-500">Confidence</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Actions & Export */}

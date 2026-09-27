@@ -1,10 +1,22 @@
 # backend/scraper.py
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 
 class ScrapingError(Exception):
     """Custom exception raised when web scraping fails to extract readable article content."""
     pass
+
+def extract_domain(raw_input: str) -> str:
+    """
+    Extracts the domain name from a URL input.
+    Returns 'Direct Input' if raw_input is raw text.
+    """
+    cleaned = raw_input.strip()
+    if cleaned.startswith("http://") or cleaned.startswith("https://"):
+        domain = urlparse(cleaned).netloc.replace("www.", "")
+        return domain if domain else "Direct Input"
+    return "Direct Input"
 
 def extract_text_from_input(raw_input: str) -> str:
     cleaned_input = raw_input.strip()
@@ -31,10 +43,9 @@ def extract_text_from_input(raw_input: str) -> str:
             # If paragraph extraction was too short, try fallback body text
             if len(extracted_text) < 150:
                 extracted_text = soup.get_text(separator=' ').strip()
-                # Clean up whitespace
                 extracted_text = ' '.join(extracted_text.split())
 
-            # If still less than 150 characters, the site blocked scraping or relies on client-side JS
+            # If still less than 150 characters, site blocked scraping or relies on client JS
             if len(extracted_text) < 150:
                 raise ScrapingError("Extracted content is too short or blocked by JavaScript rendering.")
 

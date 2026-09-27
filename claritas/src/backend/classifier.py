@@ -23,7 +23,6 @@ nltk.download('vader_lexicon', quiet=True)
 BASE_DIR = Path(__file__).resolve().parent
 PIPELINE_DIR = BASE_DIR / "models" / "claritas_kaggle_model" / "saved_fake_news_pipeline"
 
-# Friendly display names for the dashboard's evidence panel
 FRIENDLY_NAMES = {
     'roberta_prob': "the AI model's own reading of the text",
     'sentiment_polarity': "emotional tone (positive/negative)",
@@ -39,14 +38,6 @@ FRIENDLY_NAMES = {
 
 
 def _get_underlying_lgbm(calibrated_model):
-    """
-    CalibratedClassifierCV wraps LightGBM; SHAP's TreeExplainer needs the
-    raw tree model, not the calibration wrapper. The attribute name that
-    holds the fitted base model has changed across sklearn versions:
-      - sklearn < 1.6 : `base_estimator`
-      - sklearn >= 1.6: `estimator`
-    We try every known name so this works regardless of installed version.
-    """
     try:
         cc = calibrated_model.calibrated_classifiers_[0]
     except (AttributeError, IndexError) as e:
@@ -89,11 +80,6 @@ class ClaritasClassifier:
 
         print("✓ Core prediction pipeline loaded successfully.")
 
-        # -----------------------------------------------------------------
-        # Explainability engines (SHAP + LIME). Wrapped so that if THIS
-        # fails for any reason (version mismatch, etc.), the core /api/analyze
-        # endpoint still works — only /api/evidence will be unavailable.
-        # -----------------------------------------------------------------
         self.explainability_ready = False
         self.shap_explainer = None
         self.lime_explainer = None
@@ -107,8 +93,6 @@ class ClaritasClassifier:
             print("✓ Explainability engines (SHAP + LIME) ready.")
         except Exception as e:
             print(f"[WARNING] Explainability engines failed to initialize: {e}")
-            print("[WARNING] /api/analyze will still work normally. "
-                  "/api/evidence will return a 503 until this is resolved.")
 
     def _deep_clean(self, text: str) -> str:
         text = re.sub(r'\(Reuters\)', '', text)
@@ -127,8 +111,6 @@ class ClaritasClassifier:
         return float(probs[1].item())
 
     def _roberta_probs_batch(self, texts, batch_size: int = 16):
-        """Batched roberta P(fake) — used by LIME to score many perturbed
-        variants of the input text quickly."""
         probs = []
         texts = list(texts)
         for i in range(0, len(texts), batch_size):
@@ -139,7 +121,13 @@ class ClaritasClassifier:
             probs.extend(torch.softmax(logits, dim=1)[:, 1].tolist())
         return probs
 
-    def _build_features(self, clean_text: str, roberta_prob: float, linguistic_metrics: Optional[dict] = None) -> dict:
+    def _build_features(
+        self, 
+        clean_text: str, 
+        roberta_prob: float, 
+        linguistic_metrics: Optional[dict] = None,
+        source_score: Optional[float] = None
+    ) -> dict:
         words = clean_text.split()
         word_count = len(words)
         char_count = max(len(clean_text), 1)
@@ -154,6 +142,11 @@ class ClaritasClassifier:
         except Exception:
             flesch = 50.0
 
+        actual_source_score = (
+            source_score if source_score is not None 
+            else float(self.metadata.get('global_source_prior', 0.438281))
+        )
+
         return {
             'sentiment_polarity': float(polarity),
             'roberta_prob': float(roberta_prob),
@@ -164,13 +157,18 @@ class ClaritasClassifier:
             'caps_ratio': float(sum(1 for c in clean_text if c.isupper()) / char_count),
             'flesch_reading_ease': float(flesch),
             'excl_ratio': float(clean_text.count('!') / char_count),
-            'source_score': float(self.metadata.get('global_source_prior', 0.438281))
+            'source_score': actual_source_score
         }
 
-    def predict(self, text: str, linguistic_metrics: Optional[dict] = None) -> dict:
+    def predict(
+        self, 
+        text: str, 
+        linguistic_metrics: Optional[dict] = None, 
+        source_score: Optional[float] = None
+    ) -> dict:
         clean_text = self._deep_clean(text)
         roberta_prob = self._roberta_prob(clean_text)
-        features = self._build_features(clean_text, roberta_prob, linguistic_metrics)
+        features = self._build_features(clean_text, roberta_prob, linguistic_metrics, source_score)
         features_df = pd.DataFrame([features])[self.metadata['feature_names']]
 
         calibrated_prob = float(self.calibrated_lgbm.predict_proba(features_df)[0][1])
@@ -216,17 +214,13 @@ class ClaritasClassifier:
                            linguistic_metrics: Optional[dict] = None, num_lime_features: int = 15,
                            num_lime_samples: int = 200) -> dict:
         if not self.explainability_ready:
-            raise RuntimeError(
-                "Explainability engine is not available (SHAP/LIME failed to initialize at "
-                "startup — check the server logs from when uvicorn started for the exact error)."
-            )
+            raise RuntimeError("Explainability engine is not available.")
 
         clean_text = self._deep_clean(text)
         roberta_prob = self._roberta_prob(clean_text)
         features = self._build_features(clean_text, roberta_prob, linguistic_metrics)
         features_df = pd.DataFrame([features])[self.metadata['feature_names']]
 
-        # --- SHAP: which of the 10 features drove the meta-model's decision ---
         sv = self.shap_explainer.shap_values(features_df)
         sv_row = sv[1][0] if isinstance(sv, list) else sv[0]
         contribs = dict(zip(self.metadata['feature_names'], sv_row))
@@ -256,7 +250,6 @@ class ClaritasClassifier:
             f"The main factors were: " + "; ".join(top_parts) + "."
         )
 
-        # --- LIME: which words in the raw text drove the transformer layer ---
         def predict_proba_for_lime(texts):
             probs = self._roberta_probs_batch(texts)
             return np.array([[1 - p, p] for p in probs])
