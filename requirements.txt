@@ -12,3 +12,6 @@ textstat
 nltk
 requests
 beautifulsoup4
+shap
+lime
+scikit-learn
