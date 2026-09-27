@@ -275,7 +275,12 @@ export default function AnalyzerPage() {
               </div>
             )}
             
-            <VerdictCard confidence={result.confidence_score} verdict={result.verdict} />
+            <VerdictCard
+  confidence={result.confidence_score}
+  verdict={result.verdict}
+  text={result.cleaned_text}
+  misinformationProb={result.misinformation_prob}
+/>
 
             {/* Feature Contribution Bars */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3">
