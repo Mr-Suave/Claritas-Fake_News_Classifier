@@ -1,11 +1,55 @@
 // src/pages/HowItWorksPage.jsx
 import React from 'react';
 import { 
-  BrainCircuit, TreePine, MessageSquareText, Cpu, ScrollText, ZoomIn
+  BrainCircuit, TreePine, MessageSquareText, Cpu, ScrollText, ZoomIn,
+  Target, CheckCircle2, Crosshair, Gauge, TrendingUp, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 
 // 1. Import your PNG image here
 import flowchartImg from '../assets/how-it-works.png'; 
+
+// ---------------------------------------------------------
+// Evaluation results from the held-out test split (n = 8,980)
+// Update these values if you re-train / re-evaluate the model
+// ---------------------------------------------------------
+const METRICS = {
+  accuracy: 0.9993,
+  precision: 1.0000,
+  recall: 0.9987,
+  f1: 0.9994,
+  auc: 0.99999,
+};
+
+const CONFUSION_MATRIX = {
+  trueReal: 4284,
+  falseFake: 0,   // false positives: real flagged as fake
+  falseReal: 6,   // false negatives: fake flagged as real
+  trueFake: 4690,
+};
+
+const SUPPORT = {
+  real: 4284,
+  fake: 4696,
+  total: 8980,
+};
+
+function MetricCard({ icon: Icon, label, value, accent, suffix = '%' }) {
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col space-y-2 shadow-xl">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent.bg}`}>
+        <Icon className={`w-4.5 h-4.5 ${accent.text}`} />
+      </div>
+      <div>
+        <p className="text-2xl font-black text-white tracking-tight">
+          {value}{suffix}
+        </p>
+        <p className="text-[11px] font-mono uppercase tracking-wider text-slate-500 mt-0.5">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function HowItWorksPage() {
   return (
@@ -84,6 +128,126 @@ export default function HowItWorksPage() {
         </div>
 
       </div>
+
+      {/* Model Evaluation Results Section */}
+      <div className="space-y-6 pt-4">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            Model <span className="text-emerald-400">Evaluation Results</span>
+          </h2>
+          <p className="text-slate-400 text-xs max-w-2xl mx-auto">
+            Held-out test split &middot; {SUPPORT.total.toLocaleString()} samples &middot; calibrated LightGBM meta-classifier output
+          </p>
+        </div>
+
+        {/* Metric Cards Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <MetricCard
+            icon={Target}
+            label="Accuracy"
+            value={(METRICS.accuracy * 100).toFixed(2)}
+            accent={{ bg: 'bg-indigo-500/10', text: 'text-indigo-400' }}
+          />
+          <MetricCard
+            icon={Crosshair}
+            label="Precision"
+            value={(METRICS.precision * 100).toFixed(2)}
+            accent={{ bg: 'bg-emerald-500/10', text: 'text-emerald-400' }}
+          />
+          <MetricCard
+            icon={CheckCircle2}
+            label="Recall"
+            value={(METRICS.recall * 100).toFixed(2)}
+            accent={{ bg: 'bg-cyan-500/10', text: 'text-cyan-400' }}
+          />
+          <MetricCard
+            icon={Gauge}
+            label="F1 Score"
+            value={(METRICS.f1 * 100).toFixed(2)}
+            accent={{ bg: 'bg-purple-500/10', text: 'text-purple-400' }}
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label="AUC"
+            value={(METRICS.auc * 100).toFixed(2)}
+            accent={{ bg: 'bg-amber-500/10', text: 'text-amber-400' }}
+          />
+        </div>
+
+        {/* Confusion Matrix + Failure Analysis */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* Confusion Matrix */}
+          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+              <ShieldCheck className="w-5 h-5 text-indigo-400" />
+              <span>Confusion Matrix</span>
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-center text-xs font-mono">
+                <thead>
+                  <tr className="text-slate-500">
+                    <th className="p-2"></th>
+                    <th className="p-2 font-normal uppercase tracking-wider">Predicted Real</th>
+                    <th className="p-2 font-normal uppercase tracking-wider">Predicted Fake</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="p-2 text-slate-500 uppercase tracking-wider text-left">Actual Real</td>
+                    <td className="p-3 bg-emerald-500/10 border border-emerald-800/40 rounded-lg text-emerald-300 font-bold text-base">
+                      {CONFUSION_MATRIX.trueReal.toLocaleString()}
+                    </td>
+                    <td className="p-3 bg-slate-800/40 border border-slate-700/40 rounded-lg text-slate-400 font-bold text-base">
+                      {CONFUSION_MATRIX.falseFake}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 text-slate-500 uppercase tracking-wider text-left">Actual Fake</td>
+                    <td className="p-3 bg-amber-500/10 border border-amber-800/40 rounded-lg text-amber-300 font-bold text-base">
+                      {CONFUSION_MATRIX.falseReal}
+                    </td>
+                    <td className="p-3 bg-emerald-500/10 border border-emerald-800/40 rounded-lg text-emerald-300 font-bold text-base">
+                      {CONFUSION_MATRIX.trueFake.toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Support: {SUPPORT.real.toLocaleString()} real &middot; {SUPPORT.fake.toLocaleString()} fake &middot; {SUPPORT.total.toLocaleString()} total
+            </p>
+          </div>
+
+          {/* Failure Case Summary */}
+          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              <span>Failure Case Analysis</span>
+            </h3>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-3">
+                <span className="text-xs text-slate-400">False Positives <span className="text-slate-600">(real flagged as fake)</span></span>
+                <span className="text-lg font-black text-emerald-400">{CONFUSION_MATRIX.falseFake}</span>
+              </div>
+              <div className="flex items-center justify-between bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-3">
+                <span className="text-xs text-slate-400">False Negatives <span className="text-slate-600">(fake flagged as real)</span></span>
+                <span className="text-lg font-black text-amber-400">{CONFUSION_MATRIX.falseReal}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed pt-1 border-t border-slate-800">
+              Zero false positives means no genuine article was incorrectly flagged in this split.
+              The 6 false negatives are being reviewed as candidates for the human-in-the-loop
+              relabeling queue, and cross-dataset testing (LIAR) is used separately to probe
+              generalization beyond ISOT's source-style patterns.
+            </p>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 }

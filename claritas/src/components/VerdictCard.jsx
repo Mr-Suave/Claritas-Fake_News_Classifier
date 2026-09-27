@@ -1,5 +1,7 @@
-// Verdict Card - Simple and clean, no gauge nonsense
-export function VerdictCard({ confidence, verdict }) {
+// VerdictCard.jsx - Simple and clean, no gauge nonsense
+import { EvidencePanel } from './EvidencePanel';
+
+export function VerdictCard({ confidence, verdict, text, misinformationProb, apiBaseUrl }) {
   const getIcon = () => {
     if (verdict === 'Likely Misinformation') {
       return (
@@ -23,24 +25,50 @@ export function VerdictCard({ confidence, verdict }) {
   };
 
   return (
-    <div className="bg-gradient-to-r from-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex items-center justify-between gap-6">
-      <div className="flex items-start gap-4">
-        {getIcon()}
-        <div className="space-y-1">
-          <span className="text-[10px] font-mono uppercase tracking-wide text-slate-500 block">Classification Verdict</span>
-          <h3 className={`text-2xl font-black ${
-            verdict === 'Likely Misinformation' ? 'text-rose-400' :
-            verdict === 'Likely Real' ? 'text-emerald-400' : 'text-amber-400'
-          }`}>
-            {verdict}
-          </h3>
+    <div className="space-y-4">
+      <div className="bg-gradient-to-r from-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 flex items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          {getIcon()}
+          <div className="space-y-1">
+            <span className="text-[10px] font-mono uppercase tracking-wide text-slate-500 block">Classification Verdict</span>
+            <h3 className={`text-2xl font-black ${
+              verdict === 'Likely Misinformation' ? 'text-rose-400' :
+              verdict === 'Likely Real' ? 'text-emerald-400' : 'text-amber-400'
+            }`}>
+              {verdict}
+            </h3>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <span className="text-[10px] font-mono uppercase tracking-wide text-slate-500 block">Model Confidence</span>
+          <span className="text-4xl font-mono font-black text-indigo-400">{confidence}%</span>
         </div>
       </div>
 
-      <div className="text-right">
-        <span className="text-[10px] font-mono uppercase tracking-wide text-slate-500 block">Model Confidence</span>
-        <span className="text-4xl font-mono font-black text-indigo-400">{confidence}%</span>
-      </div>
+      {/*
+        Evidence panel: SHAP feature breakdown + LIME highlighted text.
+        REQUIRES the parent to pass `text` (the cleaned article text) and
+        `misinformationProb` (the raw 0-1 probability) in addition to the
+        original confidence/verdict props, e.g.:
+
+          <VerdictCard
+            confidence={result.confidence_score}
+            verdict={result.verdict}
+            text={result.cleaned_text}
+            misinformationProb={result.misinformation_prob}
+          />
+
+        If these two props aren't passed, EvidencePanel renders nothing
+        (see its internal guard) rather than throwing — so this component
+        stays safe to use anywhere without breaking existing call sites.
+      */}
+      <EvidencePanel
+        text={text}
+        verdict={verdict}
+        misinformationProb={misinformationProb}
+        apiBaseUrl={apiBaseUrl}
+      />
     </div>
   );
 }

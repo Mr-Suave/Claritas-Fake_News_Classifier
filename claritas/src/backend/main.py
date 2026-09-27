@@ -37,6 +37,11 @@ class ReviewFeedback(BaseModel):
     auditor_verdict: str
     note: Optional[str] = ""
 
+class EvidenceRequest(BaseModel):
+    text: str
+    verdict: str
+    misinformation_prob: float
+
 def find_existing_review(raw_text: str, cleaned_text: str):
     raw_clean = raw_text.strip().lower()
     cleaned_clean = cleaned_text.strip().lower()
@@ -50,21 +55,22 @@ def find_existing_review(raw_text: str, cleaned_text: str):
             return entry
     return None
 
+@app.get("/api/health")
+async def health_check():
+    """Quick way to confirm the backend is up and whether explainability is available."""
+    return {
+        "status": "ok",
+        "explainability_ready": classifier_model.explainability_ready,
+    }
+
 @app.post("/api/analyze")
 async def analyze_claim(req: AnalysisRequest):
     try:
-        # Step 1: Web Scrape URL or clean raw text
         cleaned_text = extract_text_from_input(req.text)
-        
-        # Step 2: Extract linguistic features
         linguistic_data = compute_linguistic_metrics(cleaned_text)
-        
-        # Step 3: Run Transformer model inference
         prediction = classifier_model.predict(cleaned_text, linguistic_data)
-        
-        # Step 4: Check if item was reviewed by human
         existing_review = find_existing_review(req.text, cleaned_text)
-        
+
         response_data = {
             "id": abs(hash(cleaned_text)) % 1000000,
             "title": req.title,
@@ -74,9 +80,9 @@ async def analyze_claim(req: AnalysisRequest):
             "misinformation_prob": prediction["misinformation_prob"],
             "confidence_score": prediction["confidence_score"],
             "linguistic_metrics": linguistic_data,
-            "feature_contributions": prediction["feature_contributions"],  # ADD THIS
-            "has_layer_disagreement": prediction["has_layer_disagreement"],  # ADD THIS
-            "disagreement_delta": prediction["disagreement_delta"],  # ADD THIS
+            "feature_contributions": prediction["feature_contributions"],
+            "has_layer_disagreement": prediction["has_layer_disagreement"],
+            "disagreement_delta": prediction["disagreement_delta"],
             "status": "Pending Review",
             "has_human_review": False,
             "human_review": None
@@ -89,16 +95,55 @@ async def analyze_claim(req: AnalysisRequest):
 
         return response_data
 
-    except ScrapingError as se:
-        # Handle scraping failure cleanly without cluttering terminal logs or running model
+    except ScrapingError:
         print(f"[API Notice] Scraping failed for input URL: {req.text}")
         raise HTTPException(
-            status_code=422, 
+            status_code=422,
             detail="Unable to scrape this URL. The site may block web crawlers or require JavaScript. Please try another URL or copy and paste the article text directly."
         )
     except Exception as e:
         print("\n" + "="*50)
-        print("[API ERROR TRACEBACK]")
+        print("[API ERROR TRACEBACK - /api/analyze]")
+        traceback.print_exc()
+        print("="*50 + "\n")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/evidence")
+async def get_evidence(req: EvidenceRequest):
+    """
+    Runs SHAP (feature-level) + LIME (word-level) explanation on demand.
+    Kept separate from /api/analyze because LIME requires ~200 forward
+    passes through the transformer and would otherwise slow down the
+    primary analysis response.
+    """
+    if not classifier_model.explainability_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="Explainability engine is not available on this server. "
+                   "Check the uvicorn startup logs for a '[WARNING] Explainability engines failed to initialize' message."
+        )
+    try:
+        cleaned_text = extract_text_from_input(req.text)
+        linguistic_data = compute_linguistic_metrics(cleaned_text)
+
+        evidence = classifier_model.get_full_evidence(
+            text=cleaned_text,
+            verdict=req.verdict,
+            misinformation_prob=req.misinformation_prob,
+            linguistic_metrics=linguistic_data,
+        )
+        return evidence
+
+    except ScrapingError:
+        raise HTTPException(
+            status_code=422,
+            detail="Unable to re-process this input for evidence generation."
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        print("\n" + "="*50)
+        print("[API ERROR TRACEBACK - /api/evidence]")
         traceback.print_exc()
         print("="*50 + "\n")
         raise HTTPException(status_code=500, detail=str(e))
@@ -106,7 +151,7 @@ async def analyze_claim(req: AnalysisRequest):
 @app.post("/api/review")
 async def record_human_review(review: ReviewFeedback):
     existing = next((item for item in review_database if item["id"] == review.id), None)
-    
+
     review_entry = {
         "id": review.id,
         "raw_text": review.raw_text,
@@ -133,12 +178,12 @@ async def get_all_reviews():
 async def explain_with_ollama(payload: dict):
     try:
         import requests
-        
+
         text = payload.get("text", "")
         verdict = payload.get("verdict", "")
         confidence = payload.get("confidence", 0)
         metrics = payload.get("metrics", {})
-        
+
         prompt = f"""Analyze this misinformation detection result and explain the key drivers:
 
 Text: {text[:500]}...
@@ -154,19 +199,19 @@ Provide a brief 3-point explanation of why the model reached this verdict. Focus
         response = requests.post(
             "http://localhost:11434/api/generate",
             json={
-                "model": "llama3",  # or whatever model you have running
+                "model": "llama3",
                 "prompt": prompt,
                 "stream": False
             },
             timeout=120
         )
-        
+
         if response.status_code == 200:
             explanation = response.json().get("response", "")
             return {"explanation": explanation}
         else:
             return {"explanation": "Ollama returned an error. Check your model is running."}
-            
+
     except requests.exceptions.ConnectionError:
         return {"explanation": "Cannot connect to Ollama. Make sure it's running on http://localhost:11434"}
     except Exception as e:
