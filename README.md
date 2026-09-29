@@ -2,6 +2,8 @@
 
 Claritas is an end-to-end, privacy-focused Misinformation & Trust Detection Platform that combines layered ensemble classifiers, live web text extraction, batch analysis, and local explainable AI (XAI).
 
+## Demo Video : [Link](https://drive.google.com/file/d/127RX2nEcaEFdanHS694iqxNfExiwGMaZ/view?usp=sharing)
+
 ## IMPORTANT: 
 
 Due to GitHub's 100MB file size limit, the pre-trained ensemble model weights are hosted externally and could not be committed to the repostitory.
