@@ -40,42 +40,47 @@ export default function HumanReviewModal({ isOpen, onClose, currentResult, onRev
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 className="font-bold text-white text-base flex items-center space-x-2">
-            <AlertTriangle className="w-5 h-5 text-indigo-400" />
-            <span>Human-In-The-Loop Audit Review</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+      <div className="bg-[#fffdf7] border-4 border-black p-6 max-w-lg w-full shadow-[8px_8px_0px_#1a1815] space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center border-b-2 border-black pb-3">
+          <h3 className="font-serif-headline font-bold text-black text-lg flex items-center space-x-2">
+            <AlertTriangle className="w-5 h-5 text-[#cc0000]" />
+            <span className="uppercase tracking-wide font-typewriter">Press Bureau Audit Review</span>
           </h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-black hover:bg-black hover:text-[#f4efe6] transition border border-black"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {submitted ? (
           <div className="py-8 text-center space-y-2">
-            <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
-            <h4 className="font-bold text-white text-lg">Added to Review List</h4>
-            <p className="text-xs text-slate-400">Review recorded! Claritas will remember this verdict.</p>
+            <CheckCircle2 className="w-12 h-12 text-[#008000] mx-auto animate-bounce" />
+            <h4 className="font-typewriter font-bold text-black text-lg uppercase">Audit Logged To Desk</h4>
+            <p className="text-xs font-serif-headline text-slate-700">Audit recorded! The Claritas Gazette archive updated.</p>
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              <span className="text-[10px] text-slate-400 uppercase font-mono">Analyzed Text Sample</span>
-              <p className="text-xs bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 font-mono max-h-28 overflow-y-auto">
+              <span className="text-[10px] font-typewriter text-slate-700 uppercase">INSPECTED PRESS WIRE TEXT</span>
+              <p className="text-xs bg-[#f7f3e9] p-3 border-2 border-black text-black font-serif-headline max-h-28 overflow-y-auto leading-relaxed">
                 {currentResult.cleaned_text}
               </p>
             </div>
 
             <div className="space-y-3">
-              <span className="text-[10px] text-slate-400 uppercase font-mono">Auditor Assessment</span>
+              <span className="text-[10px] font-typewriter text-slate-700 uppercase">EDITOR ASSESSMENT</span>
               <div className="grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => setDecision('confirm')}
-                  className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-2 ${
+                  className={`p-3 border-2 font-typewriter text-xs font-bold uppercase transition flex items-center justify-center space-x-2 ${
                     decision === 'confirm'
-                      ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-[#f0fff0] border-[#008000] text-[#008000] shadow-[2px_2px_0px_#008000]'
+                      : 'bg-[#fffdf7] border-black text-black hover:bg-[#f7f3e9]'
                   }`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
@@ -83,25 +88,26 @@ export default function HumanReviewModal({ isOpen, onClose, currentResult, onRev
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setDecision('relabel')}
-                  className={`p-3 rounded-xl border text-xs font-bold transition flex items-center justify-center space-x-2 ${
+                  className={`p-3 border-2 font-typewriter text-xs font-bold uppercase transition flex items-center justify-center space-x-2 ${
                     decision === 'relabel'
-                      ? 'bg-rose-950/80 border-rose-500 text-rose-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-[#fff0f0] border-[#cc0000] text-[#cc0000] shadow-[2px_2px_0px_#cc0000]'
+                      : 'bg-[#fffdf7] border-black text-black hover:bg-[#f7f3e9]'
                   }`}
                 >
                   <AlertTriangle className="w-4 h-4" />
-                  <span>False Positive / Incorrect</span>
+                  <span>Incorrect Verdict</span>
                 </button>
               </div>
 
               {decision === 'relabel' && (
                 <div className="space-y-1 pt-1">
-                  <label className="text-[10px] text-indigo-400 uppercase font-mono">Correct Auditor Verdict</label>
+                  <label className="text-[10px] font-typewriter text-[#cc0000] uppercase">CORRECT EDITOR VERDICT</label>
                   <select
                     value={auditorVerdict}
                     onChange={(e) => setAuditorVerdict(e.target.value)}
-                    className="w-full bg-slate-950 border border-indigo-800/80 rounded-xl p-2.5 text-xs text-white focus:outline-none"
+                    className="w-full bg-[#f7f3e9] border-2 border-black p-2.5 text-xs text-black font-typewriter font-bold uppercase focus:outline-none"
                   >
                     <option value="Likely Misinformation">Likely Misinformation</option>
                     <option value="Likely Real">Likely Real</option>
@@ -112,22 +118,23 @@ export default function HumanReviewModal({ isOpen, onClose, currentResult, onRev
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] text-slate-400 uppercase font-mono">Audit Explanation Notes</label>
+              <label className="text-[10px] font-typewriter text-slate-700 uppercase">EDITOR'S AUDIT DISCLOSURE NOTE</label>
               <textarea
                 rows={3}
-                placeholder="Describe why the model was right or wrong..."
+                placeholder="Log why the model was right or wrong for the record..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full bg-[#f7f3e9] border-2 border-black p-3 text-xs text-black font-serif-headline focus:outline-none resize-none"
               />
             </div>
 
             <button
+              type="button"
               onClick={handleSubmit}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center space-x-2 transition shadow-lg shadow-indigo-600/30 cursor-pointer"
+              className="w-full bg-black hover:bg-[#cc0000] text-[#f4efe6] font-typewriter font-bold py-3 text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition shadow-[3px_3px_0px_#1a1815] cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              <span>Add to Review List</span>
+              <span>Record Editorial Review</span>
             </button>
           </>
         )}

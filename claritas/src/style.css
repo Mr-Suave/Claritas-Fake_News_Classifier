@@ -2,9 +2,39 @@
 @plugin "@tailwindcss/typography";
 
 @layer utilities {
+  .font-serif-headline {
+    font-family: 'Playfair Display', 'Times New Roman', Times, serif;
+  }
+  .font-masthead {
+    font-family: 'Cinzel', 'Old Standard TT', 'Times New Roman', Times, serif;
+  }
+  .font-blackletter {
+    font-family: 'Cinzel', 'Old Standard TT', 'Times New Roman', Times, serif;
+  }
+  .font-typewriter {
+    font-family: 'Courier Prime', 'Special Elite', monospace;
+  }
+  .news-paper {
+    background-color: #f7f3e9;
+    background-image: radial-gradient(#d6cdba 0.75px, transparent 0.75px);
+    background-size: 12px 12px;
+  }
+  .news-border-double {
+    border-style: double;
+    border-width: 4px;
+    border-color: #1a1815;
+  }
+  .stamp-badge {
+    text-transform: uppercase;
+    font-family: 'Courier Prime', monospace;
+    font-weight: 900;
+    border: 3px solid currentColor;
+    transform: rotate(-3deg);
+    display: inline-block;
+  }
   .glass-card {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(51, 65, 85, 0.5);
+    background: #fffdf7;
+    border: 2px solid #1a1815;
+    box-shadow: 4px 4px 0px #1a1815;
   }
 }

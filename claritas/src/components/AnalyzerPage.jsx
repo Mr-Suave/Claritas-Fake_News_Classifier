@@ -3,7 +3,7 @@ import React from 'react';
 import {
   Upload, RefreshCw, BrainCircuit, UserCheck, Eye, EyeOff,
   Download, AlertTriangle, CheckCircle2, History, X, Layers,
-  Link, ArrowRight
+  Link, ArrowRight, Newspaper
 } from 'lucide-react';
 import { analyzeClaim, getOllamaExplanation } from '../services/api';
 import HumanReviewModal from '../components/HumanReviewModal';
@@ -44,9 +44,11 @@ export default function AnalyzerPage() {
       reader.onload = (event) => setInputText(event.target.result);
       reader.readAsText(uploaded);
     }
+    e.target.value = '';
   };
 
-  const handleStartAnalysis = async () => {
+  const handleStartAnalysis = async (e) => {
+    if (e) e.preventDefault();
     if (!inputText.trim()) return;
 
     setStatus('scanning');
@@ -68,7 +70,9 @@ export default function AnalyzerPage() {
     }
   };
 
-  const handleStartBatchProcessing = async () => {
+  const handleStartBatchProcessing = async (e) => {
+    if (e) e.preventDefault();
+
     const items = batchInput
       .split('\n')
       .map(item => item.trim())
@@ -107,7 +111,6 @@ export default function AnalyzerPage() {
     showToast(`Batch processing completed for ${items.length} items!`, "success");
   };
 
-  // Inspect specific batch result in Analyzer View
   const handleSelectBatchResult = (batchItem) => {
     if (batchItem.status !== 'success') return;
 
@@ -121,7 +124,8 @@ export default function AnalyzerPage() {
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = (e) => {
+    if (e) e.preventDefault();
     if (!result) return;
     const csvContent = "data:text/csv;charset=utf-8," +
       "ID,Verdict,Confidence,MisinformationProb,Text\n" +
@@ -136,7 +140,8 @@ export default function AnalyzerPage() {
     document.body.removeChild(link);
   };
 
-  const handleLearnMore = async () => {
+  const handleLearnMore = async (e) => {
+    if (e) e.preventDefault();
     if (!result) return;
     setExplainStatus('explaining');
 
@@ -154,85 +159,103 @@ export default function AnalyzerPage() {
   const isInputUrl = result?.raw_text?.trim().startsWith('http://') || result?.raw_text?.trim().startsWith('https://');
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 py-4 relative">
+    <div className="max-w-4xl mx-auto space-y-8 py-2 relative">
       {/* Toast Notification Bar */}
       {toast && (
-        <div className={`fixed top-20 right-6 z-50 flex items-center space-x-3 p-4 rounded-2xl border shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4 duration-300 ${
-          toast.type === 'error' ? 'bg-rose-950/90 border-rose-800 text-rose-200' : 'bg-emerald-950/90 border-emerald-800 text-emerald-200'
+        <div className={`fixed top-24 right-6 z-50 flex items-center space-x-3 p-4 border-4 shadow-[6px_6px_0px_#1a1815] font-typewriter font-bold text-xs uppercase ${
+          toast.type === 'error' ? 'bg-[#fff0f0] border-[#cc0000] text-[#cc0000]' : 'bg-[#f0fff0] border-[#008000] text-[#008000]'
         }`}>
-          {toast.type === 'error' ? <AlertTriangle className="w-5 h-5 text-rose-400" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-          <span className="text-xs font-semibold">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="p-1 hover:opacity-75"><X className="w-4 h-4" /></button>
+          {toast.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+          <span>{toast.message}</span>
+          <button type="button" onClick={() => setToast(null)} className="p-1 hover:opacity-75"><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white">
-          Claritas <span className="text-indigo-400">Trust Engine</span>
+      {/* Main Tabloid Front Page Headline */}
+      <div className="text-center space-y-2 border-b-4 border-black pb-6">
+        <div className="inline-block bg-[#cc0000] text-white px-3 py-1 font-typewriter font-bold text-xs uppercase tracking-widest rotate-[-1deg] mb-1">
+          LATEST PRESS SCANNER WIRE
+        </div>
+        <h1 className="text-4xl sm:text-6xl font-blackletter tracking-tight text-black font-extrabold uppercase">
+          CLASSIFY ANY CLAIM OR URL
         </h1>
-        <p className="text-slate-400 text-m max-w-xl mx-auto">
-          Scan claims, URLs, or documents with two-layer ensemble models and local explainable AI.
+        <p className="text-slate-800 font-serif-headline text-base sm:text-lg italic max-w-2xl mx-auto">
+          "Submit rumors, web articles, or wire text for instant two-layer neural audit and local explainable AI."
         </p>
       </div>
 
       {/* Input Container */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="bg-[#fffdf7] border-4 border-black p-6 sm:p-8 shadow-[8px_8px_0px_#1a1815] space-y-6">
         <div className="space-y-4">
+          <div className="flex justify-between items-center border-b-2 border-black pb-2">
+            <span className="font-typewriter text-xs font-bold uppercase tracking-wider text-slate-800">
+              PRESS SUBMISSION WIRE INPUT
+            </span>
+            <span className="font-typewriter text-[10px] text-slate-600 uppercase">
+              PLAIN TEXT OR ARTICLE URL
+            </span>
+          </div>
+
           <textarea
-            rows={4}
+            rows={5}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Paste news link (https://...), claim text, or drag & drop text file here..."
-            className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition resize-none font-sans"
+            placeholder="Paste news link (https://...), claim text, or press report here to scan..."
+            className="w-full bg-[#f7f3e9] border-2 border-black p-4 text-sm text-black placeholder-slate-600 focus:outline-none focus:bg-white transition resize-none font-serif-headline leading-relaxed"
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-800/80 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-black pt-4">
             <div className="flex items-center space-x-4">
-              <label className="flex items-center space-x-2 text-xs font-semibold text-slate-400 hover:text-indigo-400 cursor-pointer transition">
+              <label
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center space-x-2 text-xs font-typewriter font-bold text-black hover:text-[#cc0000] cursor-pointer transition uppercase"
+              >
                 <Upload className="w-4 h-4" />
-                <span>{file ? file.name : "Import Text/CSV File"}</span>
+                <span>{file ? file.name : "Import Press File (.txt/.csv)"}</span>
                 <input type="file" accept=".txt,.csv" onChange={handleFileUpload} className="hidden" />
               </label>
 
               {/* Process in Batch Button */}
               <button
+                type="button"
                 onClick={() => setIsBatchModalOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold text-slate-400 hover:text-indigo-400 transition cursor-pointer"
+                className="flex items-center space-x-1.5 text-xs font-typewriter font-bold text-black hover:text-[#cc0000] transition cursor-pointer uppercase border-l-2 border-black pl-4"
               >
-                <Layers className="w-4 h-4 text-indigo-400" />
-                <span>Process in Batch</span>
+                <Layers className="w-4 h-4 text-black" />
+                <span>Process Batch Wire</span>
               </button>
             </div>
 
             <button
+              type="button"
               onClick={handleStartAnalysis}
               disabled={status === 'scanning' || !inputText.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center space-x-2 transition shadow-lg shadow-indigo-600/30 cursor-pointer"
+              className="bg-black hover:bg-[#cc0000] text-[#f4efe6] font-typewriter font-bold px-6 py-3 border-2 border-black text-xs uppercase tracking-wider flex items-center space-x-2 transition shadow-[3px_3px_0px_#1a1815] cursor-pointer disabled:opacity-50"
             >
               {status === 'scanning' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
-              <span>{status === 'scanning' ? "Scanning Content..." : "Analyze Claim"}</span>
+              <span>{status === 'scanning' ? "Scanning Wire..." : "ANALYZE CLAIM"}</span>
             </button>
           </div>
         </div>
 
         {/* Results Visualizer */}
         {status === 'analyzed' && result && (
-          <div className="border-t border-slate-800 pt-6 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+          <div className="border-t-4 border-black pt-6 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
 
             {/* URL Extracted Text Preview Card */}
             {isInputUrl && (
-              <div className="bg-slate-950 border border-indigo-900/60 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="bg-[#f7f3e9] border-2 border-black p-5 space-y-3 shadow-[4px_4px_0px_#1a1815]">
+                <div className="flex items-center justify-between border-b border-black pb-2">
                   <div className="flex items-center space-x-2">
-                    <Link className="w-4 h-4 text-indigo-400" />
-                    <h4 className="text-xs font-bold font-mono uppercase text-indigo-300">
-                      Extracted URL Content Preview
+                    <Link className="w-4 h-4 text-black" />
+                    <h4 className="text-xs font-typewriter font-bold uppercase text-black">
+                      EXTRACTED WEB ARTICLE CONTENT PREVIEW
                     </h4>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowFullScrapedText(!showFullScrapedText)}
-                    className="flex items-center space-x-1 text-xs font-mono text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                    className="flex items-center space-x-1 text-xs font-typewriter font-bold text-black hover:text-[#cc0000] transition cursor-pointer uppercase"
                   >
                     {showFullScrapedText ? (
                       <>
@@ -248,26 +271,26 @@ export default function AnalyzerPage() {
                   </button>
                 </div>
 
-                <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300 font-mono leading-relaxed">
+                <div className="p-3 bg-[#fffdf7] border border-black text-xs text-black font-serif-headline leading-relaxed">
                   <p className={showFullScrapedText ? "" : "line-clamp-3"}>
                     {result.cleaned_text}
                   </p>
                 </div>
-                <div className="flex justify-between items-center text-[10px] font-mono text-slate-500">
-                  <span>Source URL: {result.raw_text}</span>
-                  <span>Word Count: {result.linguistic_metrics?.word_count || 0} words</span>
+                <div className="flex justify-between items-center text-[10px] font-typewriter text-slate-700">
+                  <span>SOURCE URL: {result.raw_text}</span>
+                  <span>WORD COUNT: {result.linguistic_metrics?.word_count || 0} WORDS</span>
                 </div>
               </div>
             )}
 
             {/* Disagreement Badge */}
             {result.has_layer_disagreement && (
-              <div className="p-3 bg-amber-950/60 border border-amber-800 rounded-2xl flex items-center justify-between text-xs text-amber-300 font-mono">
+              <div className="p-4 bg-[#fff0f0] border-4 border-[#cc0000] flex items-center justify-between text-xs text-[#cc0000] font-typewriter font-bold shadow-[4px_4px_0px_#cc0000]">
                 <span className="flex items-center space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  <span>Layer Disagreement Detected: RoBERTa vs LightGBM differ by {result.disagreement_delta}%</span>
+                  <AlertTriangle className="w-5 h-5 text-[#cc0000]" />
+                  <span>LAYER DISAGREEMENT DETECTED: RoBERTa vs LightGBM differ by {result.disagreement_delta}%</span>
                 </span>
-                <span className="bg-amber-900/80 px-2 py-0.5 rounded text-[10px] uppercase font-bold">Ensemble Active</span>
+                <span className="bg-[#cc0000] text-white px-2 py-0.5 text-[10px] uppercase font-bold">Ensemble Active</span>
               </div>
             )}
 
@@ -279,61 +302,59 @@ export default function AnalyzerPage() {
             />
 
             {/* Feature Contribution Bars */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3">
-              <h4 className="text-xs font-bold font-mono uppercase text-indigo-400">Linguistic Signal Drivers</h4>
-              <div className="space-y-2">
+            <div className="bg-[#fffdf7] border-4 border-black p-5 space-y-3 shadow-[4px_4px_0px_#1a1815]">
+              <h4 className="text-xs font-typewriter font-bold uppercase text-black border-b border-black pb-1">
+                LINGUISTIC SIGNAL DRIVERS (SHAP INFLUENCE)
+              </h4>
+              <div className="space-y-3 pt-1">
                 {result.feature_contributions?.map((feat, idx) => (
                   <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-mono text-slate-300">
+                    <div className="flex justify-between text-[11px] font-typewriter font-bold text-black uppercase">
                       <span>{feat.name}</span>
                       <span>{feat.value}%</span>
                     </div>
-                    <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                      <div className={`${feat.color} h-full transition-all duration-700`} style={{ width: `${feat.value}%` }} />
+                    <div className="w-full bg-[#e8e1d3] h-3 border border-black overflow-hidden">
+                      <div className="bg-black h-full transition-all duration-700" style={{ width: `${feat.value}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Source Credibility Timeline */}
             {/* Source Credibility Trend Box */}
-            <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/60 shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                  Source Credibility Trend
+            <div className="bg-[#fffdf7] border-4 border-black p-5 shadow-[4px_4px_0px_#1a1815] space-y-4">
+              <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                <h3 className="text-base font-typewriter font-bold text-black uppercase flex items-center gap-2">
+                  <span className="w-3 h-3 bg-black"></span>
+                  SOURCE CREDIBILITY ARCHIVE
                 </h3>
                 {result?.domain && (
-                  <span className="text-xs font-mono bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                  <span className="text-xs font-typewriter font-bold bg-[#1a1815] text-[#f4efe6] px-2 py-1 uppercase">
                     {result.domain}
                   </span>
                 )}
               </div>
 
               {!result?.source_history || result.source_history.length === 0 || result?.domain === "Direct Input" ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400 bg-slate-900/40 rounded-lg border border-dashed border-slate-700">
-                  <svg className="w-8 h-8 mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm font-medium text-slate-300">No source history available</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                <div className="flex flex-col items-center justify-center py-6 text-center text-slate-700 bg-[#f7f3e9] border-2 border-dashed border-black">
+                  <p className="text-sm font-typewriter font-bold text-black uppercase">NO SOURCE HISTORY RECORDED</p>
+                  <p className="text-xs font-serif-headline text-slate-700 mt-1">
                     {result?.domain === "Direct Input" 
-                      ? "Historical tracking requires a web article URL." 
-                      : "This domain hasn't been scanned enough times yet."}
+                      ? "Historical domain tracking requires a web article URL." 
+                      : "This domain has not been scanned enough times yet."}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {result.source_history.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-slate-900/60 rounded-lg border border-slate-700/50">
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-[#f7f3e9] border-2 border-black text-xs font-typewriter">
                       <div>
-                        <p className="text-sm font-medium text-slate-200">{item.date}</p>
-                        <p className="text-xs text-slate-400">{item.verdict}</p>
+                        <p className="font-bold text-black">{item.date}</p>
+                        <p className="text-slate-800">{item.verdict}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm font-bold text-indigo-400">{item.score}%</span>
-                        <p className="text-[10px] text-slate-500">Confidence</p>
+                        <span className="font-black text-[#cc0000]">{item.score}%</span>
+                        <p className="text-[10px] text-slate-600 uppercase">Confidence</p>
                       </div>
                     </div>
                   ))}
@@ -342,26 +363,29 @@ export default function AnalyzerPage() {
             </div>
 
             {/* Actions & Export */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 pt-2">
               <button
+                type="button"
                 onClick={handleLearnMore}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition cursor-pointer"
+                className="flex-1 bg-black hover:bg-[#cc0000] text-[#f4efe6] font-typewriter font-bold py-3 px-4 border-2 border-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition shadow-[3px_3px_0px_#1a1815] cursor-pointer"
               >
-                <BrainCircuit className="w-4 h-4 text-indigo-400" />
+                <BrainCircuit className="w-4 h-4" />
                 <span>{explainStatus === 'explaining' ? "Asking Local Ollama..." : "Explain with Ollama"}</span>
               </button>
 
               <button
+                type="button"
                 onClick={handleExportCSV}
-                className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 font-semibold py-3 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition cursor-pointer"
+                className="bg-[#fffdf7] hover:bg-[#f7f3e9] border-2 border-black text-black font-typewriter font-bold py-3 px-4 text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition shadow-[3px_3px_0px_#1a1815] cursor-pointer"
               >
-                <Download className="w-4 h-4 text-emerald-400" />
+                <Download className="w-4 h-4" />
                 <span>Export CSV Report</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition cursor-pointer"
+                className="bg-black hover:bg-[#cc0000] text-[#f4efe6] font-typewriter font-bold py-3 px-4 border-2 border-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition shadow-[3px_3px_0px_#1a1815] cursor-pointer"
               >
                 <UserCheck className="w-4 h-4" />
                 <span>Audit Result</span>
@@ -369,8 +393,8 @@ export default function AnalyzerPage() {
             </div>
 
             {explainStatus === 'done' && (
-              <div className="glass-card p-5 rounded-2xl text-xs text-slate-300">
-                <div className="prose prose-invert prose-xs max-w-none prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-slate-800">
+              <div className="bg-[#fffdf7] border-4 border-black p-5 text-xs text-black font-serif-headline shadow-[4px_4px_0px_#1a1815]">
+                <div className="prose max-w-none">
                   <ReactMarkdown>{explanation}</ReactMarkdown>
                 </div>
               </div>
@@ -379,20 +403,21 @@ export default function AnalyzerPage() {
         )}
       </div>
 
-      {/* Batch Processing Modal with Clickable Results */}
+      {/* Batch Processing Modal */}
       {isBatchModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base flex items-center space-x-2">
-                <Layers className="w-5 h-5 text-indigo-400" />
-                <span>Batch Processing Pipeline</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="bg-[#fffdf7] border-4 border-black p-6 max-w-2xl w-full shadow-[8px_8px_0px_#1a1815] space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center border-b-2 border-black pb-3">
+              <h3 className="font-typewriter font-bold text-black text-base uppercase flex items-center space-x-2">
+                <Layers className="w-5 h-5 text-black" />
+                <span>BATCH PRESS PIPELINE</span>
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   if (!isBatchProcessing) setIsBatchModalOpen(false);
                 }}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 disabled:opacity-50"
+                className="p-1 text-black hover:bg-black hover:text-[#f4efe6] transition border border-black"
                 disabled={isBatchProcessing}
               >
                 <X className="w-5 h-5" />
@@ -400,8 +425,8 @@ export default function AnalyzerPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] text-slate-400 uppercase font-mono">
-                Input Batch Entries (One URL or Text Claim per line)
+              <label className="text-[10px] font-typewriter text-slate-700 uppercase">
+                INPUT BATCH ENTRIES (ONE URL OR TEXT CLAIM PER LINE)
               </label>
               <textarea
                 rows={4}
@@ -409,19 +434,19 @@ export default function AnalyzerPage() {
                 value={batchInput}
                 onChange={(e) => setBatchInput(e.target.value)}
                 placeholder={"https://example.com/article-1\nClaim 2 text here...\nhttps://example.com/article-3"}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono resize-none disabled:opacity-50"
+                className="w-full bg-[#f7f3e9] border-2 border-black p-3 text-xs text-black font-typewriter focus:outline-none focus:bg-white resize-none disabled:opacity-50"
               />
             </div>
 
             {isBatchProcessing && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-mono text-indigo-300">
+              <div className="space-y-2 font-typewriter">
+                <div className="flex justify-between text-xs font-bold text-black uppercase">
                   <span>Processing item {batchProgress.current} of {batchProgress.total}...</span>
                   <span>{Math.round((batchProgress.current / batchProgress.total) * 100)}%</span>
                 </div>
-                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                <div className="w-full bg-[#e8e1d3] h-3 border border-black overflow-hidden">
                   <div
-                    className="bg-indigo-500 h-full transition-all duration-300"
+                    className="bg-black h-full transition-all duration-300"
                     style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
                   />
                 </div>
@@ -432,45 +457,34 @@ export default function AnalyzerPage() {
             {batchResults.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 uppercase font-mono">
-                    Batch Execution Results (Click any item to view detailed report)
+                  <span className="text-[10px] font-typewriter text-slate-700 uppercase font-bold">
+                    BATCH EXECUTION RESULTS (CLICK ANY ITEM TO INSPECT)
                   </span>
                 </div>
-                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                <div className="max-h-56 overflow-y-auto space-y-2 pr-1 font-typewriter">
                   {batchResults.map((res, idx) => (
                     <div
                       key={idx}
                       onClick={() => handleSelectBatchResult(res)}
-                      className={`bg-slate-950 border rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs font-mono transition group ${
+                      className={`bg-[#f7f3e9] border-2 border-black p-3 flex items-center justify-between gap-3 text-xs transition ${
                         res.status === 'success'
-                          ? 'border-slate-800 hover:border-indigo-500 hover:bg-slate-900/90 cursor-pointer'
-                          : 'border-rose-900/50 opacity-70 cursor-not-allowed'
+                          ? 'hover:bg-black hover:text-[#f4efe6] cursor-pointer'
+                          : 'opacity-50 cursor-not-allowed'
                       }`}
                     >
                       <div className="truncate flex-1">
-                        <span className="text-slate-500 mr-2">#{idx + 1}</span>
-                        <span className="text-slate-200 group-hover:text-indigo-300 transition">
-                          {res.input}
-                        </span>
+                        <span className="mr-2 font-bold">#{idx + 1}</span>
+                        <span>{res.input}</span>
                       </div>
 
                       {res.status === 'success' ? (
                         <div className="flex items-center space-x-2 shrink-0">
-                          <span
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center space-x-1 ${
-                              res.data.verdict === 'Likely Misinformation'
-                                ? 'bg-rose-950/80 text-rose-400 border border-rose-800'
-                                : res.data.verdict === 'Likely Real'
-                                ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
-                                : 'bg-amber-950/80 text-amber-400 border border-amber-800'
-                            }`}
-                          >
-                            <span>{res.data.verdict} ({res.data.confidence_score}%)</span>
-                            <ArrowRight className="w-3 h-3 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                          <span className="px-2 py-0.5 border border-black text-[10px] font-bold uppercase bg-[#fffdf7] text-black">
+                            {res.data.verdict} ({res.data.confidence_score}%)
                           </span>
                         </div>
                       ) : (
-                        <span className="bg-rose-950 text-rose-400 px-2 py-0.5 rounded text-[10px] border border-rose-800 shrink-0">
+                        <span className="bg-[#cc0000] text-white px-2 py-0.5 text-[10px] uppercase font-bold">
                           Failed
                         </span>
                       )}
@@ -482,18 +496,20 @@ export default function AnalyzerPage() {
 
             <div className="flex space-x-3 pt-2">
               <button
+                type="button"
                 onClick={handleStartBatchProcessing}
                 disabled={isBatchProcessing || !batchInput.trim()}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center space-x-2 transition cursor-pointer shadow-lg shadow-indigo-600/30"
+                className="flex-1 bg-black hover:bg-[#cc0000] text-[#f4efe6] font-typewriter font-bold py-3 text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition border-2 border-black shadow-[3px_3px_0px_#1a1815] cursor-pointer disabled:opacity-50"
               >
                 {isBatchProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
-                <span>{isBatchProcessing ? "Processing Batch..." : "Run Batch Analysis"}</span>
+                <span>{isBatchProcessing ? "Processing Batch..." : "RUN BATCH ANALYSIS"}</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsBatchModalOpen(false)}
                 disabled={isBatchProcessing}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
+                className="bg-[#fffdf7] hover:bg-[#f7f3e9] border-2 border-black text-black font-typewriter font-bold py-3 px-5 text-xs uppercase transition cursor-pointer shadow-[3px_3px_0px_#1a1815] disabled:opacity-50"
               >
                 Close
               </button>

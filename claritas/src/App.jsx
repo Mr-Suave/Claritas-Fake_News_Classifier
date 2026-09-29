@@ -9,9 +9,9 @@ import HowItWorksPage from './components/HowItWorksPage';
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen bg-[#f7f3e9] text-[#1a1815] font-serif-headline selection:bg-[#cc0000] selection:text-white news-paper">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-6 py-6">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <Routes>
             <Route path="/" element={<AnalyzerPage />} />
             <Route path="/review" element={<ReviewQueuePage />} />

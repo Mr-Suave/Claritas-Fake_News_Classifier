@@ -1,0 +1,40 @@
+{
+  "weeklyworldnews.com": [
+    {
+      "id": 1,
+      "date": "Sep 29, 2026 04:23 PM",
+      "score": 100.0,
+      "verdict": "Likely Misinformation"
+    },
+    {
+      "id": 2,
+      "date": "Sep 29, 2026 05:43 PM",
+      "score": 100.0,
+      "verdict": "Likely Misinformation"
+    },
+    {
+      "id": 3,
+      "date": "Sep 29, 2026 05:43 PM",
+      "score": 100.0,
+      "verdict": "Likely Misinformation"
+    },
+    {
+      "id": 4,
+      "date": "Sep 29, 2026 05:53 PM",
+      "score": 100.0,
+      "verdict": "Likely Misinformation"
+    },
+    {
+      "id": 5,
+      "date": "Sep 29, 2026 05:53 PM",
+      "score": 100.0,
+      "verdict": "Likely Misinformation"
+    },
+    {
+      "id": 6,
+      "date": "Sep 29, 2026 06:00 PM",
+      "score": 100.0,
+      "verdict": "Likely Misinformation"
+    }
+  ]
+}

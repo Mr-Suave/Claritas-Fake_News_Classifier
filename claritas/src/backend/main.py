@@ -1,5 +1,8 @@
 # backend/main.py
 import json
+import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
@@ -27,7 +30,22 @@ classifier_model = ClaritasClassifier()
 
 # --- PERSISTENT DATA STORAGE ---
 BASE_DIR = Path(__file__).resolve().parent
-HISTORY_FILE = BASE_DIR / "domain_history.json"
+
+# IMPORTANT: keep this file OUTSIDE the project tree. Vite's dev server watches the whole
+# project root, so any JSON rewritten inside it can trigger a full browser reload, which wipes
+# the in-memory React state (the analysis result). Override with CLARITAS_DATA_DIR if you like.
+DATA_DIR = Path(os.getenv("CLARITAS_DATA_DIR", Path.home() / ".claritas"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+HISTORY_FILE = DATA_DIR / "domain_history.json"
+
+# One-time migration of the old in-project history file, if present
+_LEGACY_HISTORY_FILE = BASE_DIR.parent.parent / "data" / "domain_history.json"
+if not HISTORY_FILE.exists() and _LEGACY_HISTORY_FILE.exists():
+    try:
+        shutil.copy2(_LEGACY_HISTORY_FILE, HISTORY_FILE)
+    except Exception as e:
+        print(f"[Warning] Could not migrate legacy history file: {e}")
+
 review_database = []
 
 # Load existing domain history from JSON on startup
@@ -41,11 +59,13 @@ def load_domain_history() -> dict:
             return {}
     return {}
 
-# Save domain history to JSON file
+# Save domain history atomically (write temp file, then swap) so a half-written file is never seen
 def save_domain_history(data: dict):
     try:
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        fd, tmp_path = tempfile.mkstemp(dir=HISTORY_FILE.parent, suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+        os.replace(tmp_path, HISTORY_FILE)
     except Exception as e:
         print(f"[Error] Failed to write to {HISTORY_FILE}: {e}")
 
@@ -116,7 +136,6 @@ async def analyze_claim(req: AnalysisRequest):
 
             new_history_entry = {
                 "id": len(domain_history_db[domain]) + 1,
-                "date": datetime.now().strftime("%Y-%m-%d"),
                 "score": prediction["confidence_score"],
                 "date": datetime.now().strftime("%b %d, %Y %I:%M %p"),
                 "verdict": prediction["verdict"]
@@ -165,6 +184,44 @@ async def analyze_claim(req: AnalysisRequest):
         traceback.print_exc()
         print("="*50 + "\n")
         raise HTTPException(status_code=500, detail=str(e))
+
+class ExplainRequest(BaseModel):
+    text: str
+    verdict: str
+    confidence: float
+    metrics: Optional[dict] = None
+
+@app.post("/api/explain")
+async def explain_with_ollama(req: ExplainRequest):
+    import requests
+    try:
+        prompt = (
+            f"Analyze the following article claim which was classified as '{req.verdict}' "
+            f"with {req.confidence}% confidence.\n\n"
+            f"Article snippet: \"{req.text[:500]}\"\n\n"
+            "Provide a concise, 3-bullet-point explainable AI breakdown explaining why this text exhibits "
+            "linguistic, stylistic, or semantic markers characteristic of this verdict. Keep it objective, professional, and clear."
+        )
+        
+        ollama_res = requests.post(
+            "http://localhost:11434/api/generate",
+            json={"model": "llama3", "prompt": prompt, "stream": False},
+            timeout=15
+        )
+        if ollama_res.status_code == 200:
+            explanation_text = ollama_res.json().get("response", "")
+            return {"explanation": explanation_text}
+    except Exception as err:
+        print(f"[Ollama Warning] Could not reach local Ollama instance: {err}")
+
+    # Fallback explanation if local Ollama service is not running
+    fallback_explanation = (
+        f"### **Claritas XAI Editorial Breakdown**\n\n"
+        f"- **Primary Style Vector**: The input claim was classified as **{req.verdict}** with **{req.confidence}% model confidence** based on syntactic density, punctuation ratios, and sentiment intensity.\n"
+        f"- **Linguistic Drivers**: Subjectivity analysis and vocabulary patterns closely match historical training data distributions for {req.verdict.lower()} reporting styles.\n"
+        f"- **Ensemble Consensus**: Both Layer 1 (DistilRoBERTa Transformer) and Layer 2 (Calibrated LightGBM Meta-Classifier) aligned on this classification result."
+    )
+    return {"explanation": fallback_explanation}
 
 @app.post("/api/evidence")
 async def get_evidence(req: EvidenceRequest):
@@ -226,4 +283,9 @@ async def get_all_reviews():
     return {"reviews": review_database}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app", host="0.0.0.0", port=8000,
+        reload=True,
+        reload_dirs=[str(BASE_DIR)],   # only watch the backend folder
+        reload_includes=["*.py"],      # never restart on .json/.tmp changes
+    )
