@@ -1,3 +1,5 @@
+# Team Code: 27
+
 # Claritas - Explainable AI Misinformation Trust Engine
 
 Claritas is an end-to-end, privacy-focused Misinformation & Trust Detection Platform that combines layered ensemble classifiers, live web text extraction, batch analysis, and local explainable AI (XAI).
