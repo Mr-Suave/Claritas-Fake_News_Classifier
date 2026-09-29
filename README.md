@@ -166,7 +166,3 @@ The React app will run at: `http://localhost:5173`
    - Click **Audit Result** to confirm or correct the model verdict and log notes to the **Review Queue**.
 
 ---
-
-## License
-
-Distributed under the MIT License.
